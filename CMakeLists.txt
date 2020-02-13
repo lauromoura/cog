@@ -57,6 +57,7 @@ set(COG_DBUS_OWN_USER "" CACHE STRING
 option(COG_USE_WEBKITGTK "Use WebKitGTK+ instead of WPEWebKit" OFF)
 option(COG_PLATFORM_FDO "Build the FDO platform module" ON)
 option(COG_PLATFORM_DRM "Build the DRM platform module" OFF)
+option(COG_PLATFORM_NVIDIA "Build the NVIDIA platform module" OFF)
 option(COG_BUILD_PROGRAMS "Build and install programs as well" ON)
 option(INSTALL_MAN_PAGES "Install the man(1) pages if COG_BUILD_PROGRAMS is enabled" ON)
 set(COG_APPID "" CACHE STRING "Default GApplication unique identifier")
@@ -306,5 +307,46 @@ if (COG_PLATFORM_DRM AND NOT COG_USE_WEBKITGTK)
         COMPONENT "runtime"
     )
 endif () # COG_PLATFORM_DRM AND NOT COG_USE_WEBKITGTK
+
+# libcogplaform-nvidia
+
+if (COG_PLATFORM_NVIDIA AND NOT COG_USE_WEBKITGTK)
+    set(WAYLAND_1_10_OR_GREATER OFF)
+    pkg_check_modules(WAYLAND REQUIRED wayland-client)
+    if (NOT (WAYLAND_VERSION VERSION_LESS 1.10))
+        set(WAYLAND_1_10_OR_GREATER ON)
+    endif ()
+
+    pkg_check_modules(COGPLATFORM_NVIDIA_DEPS REQUIRED wpe-webkit-1.0>=2.24.0 wpebackend-fdo-1.0>=1.3.1 egl glesv2 wayland-server)
+
+    set(COGPLATFORM_NVIDIA_INCLUDE_DIRS
+        ${COGPLATFORM_NVIDIA_DEPS_INCLUDE_DIRS}
+        ${WAYLAND_INCLUDE_DIRS}
+    )
+    set(COGPLATFORM_NVIDIA_CFLAGS
+        ${COGPLATFORM_NVIDIA_DEPS_CFLAGS_OTHER}
+        ${WAYLAND_CFLAGS_OTHER}
+    )
+    set(COGPLATFORM_NVIDIA_LDFLAGS
+        ${COGPLATFORM_NVIDIA_DEPS_LDFLAGS}
+        ${WAYLAND_LDFLAGS}
+    )
+
+    add_library(cogplatform-nvidia MODULE platform/cog-platform-nvidia.c)
+    set_property(TARGET cogplatform-nvidia PROPERTY C_STANDARD 99)
+    target_include_directories(cogplatform-nvidia PUBLIC ${COGPLATFORM_NVIDIA_INCLUDE_DIRS})
+    target_compile_options(cogplatform-nvidia PUBLIC ${COGPLATFORM_NVIDIA_CFLAGS})
+    target_link_libraries(cogplatform-nvidia cogcore ${COGPLATFORM_NVIDIA_LDFLAGS})
+
+    find_package(WaylandProtocols REQUIRED)
+    add_wayland_protocol(cogplatform-nvidia CLIENT xdg-shell)
+    add_wayland_protocol(cogplatform-nvidia CLIENT fullscreen-shell-unstable-v1)
+    add_wayland_protocol(cogplatform-nvidia CLIENT presentation-time)
+
+    install(TARGETS cogplatform-nvidia
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        COMPONENT "runtime"
+    )
+endif ()
 
 configure_file(core/cog-config.h.in cog-config.h @ONLY)
