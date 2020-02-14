@@ -131,6 +131,7 @@ static struct {
     EGLConfig egl_config;
 
     PFNEGLCREATESTREAMATTRIBKHRPROC create_stream_attrib;
+    PFNEGLDESTROYSTREAMKHRPROC destroy_stream;
     PFNEGLSTREAMCONSUMERGLTEXTUREEXTERNALKHRPROC stream_consumer_gl_texture_external;
     PFNEGLSTREAMCONSUMERACQUIREKHRPROC stream_consumer_acquire;
     PFNEGLSTREAMCONSUMERRELEASEKHRPROC stream_consumer_release;
@@ -325,8 +326,8 @@ configure_surface_geometry (int32_t width, int32_t height)
             height = DEFAULT_HEIGHT;
     }
 
-    win_data.width = width;
-    win_data.height = height;
+    win_data.width = geometry_data.width = width;
+    win_data.height = geometry_data.height = height;
 }
 
 static void
@@ -1305,6 +1306,19 @@ on_export_eglstream_producer_resource (void *data, struct wl_resource *buffer_re
         g_assert (egl_data.create_stream_attrib);
     }
 
+    if (!egl_data.destroy_stream) {
+        egl_data.destroy_stream = (PFNEGLDESTROYSTREAMKHRPROC)
+                                   eglGetProcAddress ("eglDestroyStreamKHR");
+        g_assert (egl_data.destroy_stream);
+    }
+
+    if (egl_data.stream != EGL_NO_STREAM_KHR) {
+        egl_data.destroy_stream (egl_data.display, egl_data.stream);
+
+        egl_data.stream = EGL_NO_STREAM_KHR;
+        egl_data.stream_buffer_resource = NULL;
+    }
+
     EGLAttrib attrib_list[] = {
             EGL_WAYLAND_EGLSTREAM_WL, (EGLAttrib)buffer_resource,
             EGL_NONE,
@@ -1347,7 +1361,7 @@ repaint_source_dispatch (GSource * source, GSourceFunc callback, gpointer user_d
 
     eglMakeCurrent (egl_data.display, win_data.egl_surface, win_data.egl_surface, egl_data.context);
 
-    glViewport (0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    glViewport (0, 0, geometry_data.width, geometry_data.height);
     glClearColor (1, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -1615,8 +1629,8 @@ init_gl (GError **error)
     glTexParameteri (GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture (GL_TEXTURE_EXTERNAL_OES, 0);
 
-    geometry_data.width = DEFAULT_WIDTH;
-    geometry_data.height = DEFAULT_HEIGHT;
+    geometry_data.width = win_data.width;
+    geometry_data.height = win_data.height;
 
     float position_coords[4][2] = {
             { -1,  1 }, {  1,  1 },
