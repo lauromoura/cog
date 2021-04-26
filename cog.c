@@ -42,6 +42,7 @@ static struct {
     } on_failure;
     char *web_extensions_dir;
     gboolean ignore_tls_errors;
+    gboolean automation;
 } s_options = {
     .scale_factor = 1.0,
     .device_scale_factor = 1.0,
@@ -88,6 +89,8 @@ static GOptionEntry s_cli_options[] =
       "PATH"},
     { "ignore-tls-errors", '\0', 0, G_OPTION_ARG_NONE, &s_options.ignore_tls_errors,
         "Ignore TLS errors (default: disabled).", NULL },
+    { "automation", '\0', 0, G_OPTION_ARG_NONE, &s_options.automation,
+        "Enable automation mode (default: disabled).", NULL },
     { G_OPTION_REMAINING, '\0', 0, G_OPTION_ARG_FILENAME_ARRAY, &s_options.arguments,
         "", "[URL]" },
     { NULL }
@@ -167,7 +170,9 @@ on_handle_local_options (GApplication *application,
     }
 
     const char *uri = NULL;
-    if (!s_options.arguments) {
+    if (s_options.automation) {
+        uri = "about:blank";
+    } else if (!s_options.arguments) {
         if (!(uri = g_getenv ("COG_URL"))) {
 #ifdef COG_DEFAULT_HOME_URI
             uri = COG_DEFAULT_HOME_URI;
