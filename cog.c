@@ -382,6 +382,7 @@ on_create_view (CogShell *shell, void *user_data G_GNUC_UNUSED)
                                                       "web-context", web_context,
                                                       "zoom-level", s_options.scale_factor,
                                                       "backend", view_backend,
+                                                      "is-controlled-by-automation", cog_shell_is_automated(shell),
                                                       NULL);
 
     g_signal_connect (web_view, "create", G_CALLBACK (on_web_view_create), NULL);
